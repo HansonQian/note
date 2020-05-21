@@ -195,6 +195,138 @@ B-->>A:5、DefaultListableBeanFactory
 
       进入`doRegisterBeanDefinitions`方法
 
+      ```java
+  protected void doRegisterBeanDefinitions(Element root) {
+          BeanDefinitionParserDelegate parent = this.delegate;
+          this.delegate = createDelegate(getReaderContext(), root, parent);
       
-
-    - 
+          if (this.delegate.isDefaultNamespace(root)) {
+              String profileSpec = root.getAttribute(PROFILE_ATTRIBUTE);
+              if (StringUtils.hasText(profileSpec)) {
+                  String[] specifiedProfiles = StringUtils.tokenizeToStringArray(
+                      profileSpec, BeanDefinitionParserDelegate.MULTI_VALUE_ATTRIBUTE_DELIMITERS);
+                  if (!getReaderContext().getEnvironment().acceptsProfiles(specifiedProfiles)) {
+                      return;
+                  }
+              }
+          }
+          // 钩子方法
+          preProcessXml(root);
+          // 解析BeanDefinition
+          parseBeanDefinitions(root, this.delegate);
+          // 钩子方法
+          postProcessXml(root);
+          this.delegate = parent;
+      }
+      ```
+    
+      进入`parseBeanDefinitions`方法，该方法用于解析文档中根级别的元素：**import、alias、bean**
+    
+      ```java
+      protected void parseBeanDefinitions(Element root, BeanDefinitionParserDelegate delegate) {
+          if (delegate.isDefaultNamespace(root)) {
+              NodeList nl = root.getChildNodes();
+              for (int i = 0; i < nl.getLength(); i++) {
+                  Node node = nl.item(i);
+                  if (node instanceof Element) {
+                      Element ele = (Element) node;
+                      if (delegate.isDefaultNamespace(ele)) {
+                          // 解析默认的标签元素
+                          parseDefaultElement(ele, delegate);
+                      }else {
+                          // 解析自定义标签元素
+                          delegate.parseCustomElement(ele);
+                      }
+                  }
+              }
+          }else {
+              delegate.parseCustomElement(root);
+          }
+      }
+      ```
+    
+      进入`parseDefaultElement`方法
+    
+      ```java
+      private void parseDefaultElement(Element ele, BeanDefinitionParserDelegate delegate) {
+          // import元素处理
+          if (delegate.nodeNameEquals(ele, IMPORT_ELEMENT)) {
+              importBeanDefinitionResource(ele);
+          }
+          // alias元素处理
+          else if (delegate.nodeNameEquals(ele, ALIAS_ELEMENT)) {
+              processAliasRegistration(ele);
+          } 
+          // bean元素处理
+          else if (delegate.nodeNameEquals(ele, BEAN_ELEMENT)) {
+              processBeanDefinition(ele, delegate);// 处理Bean元素
+          }
+          // 嵌套beans元素处理
+          else if (delegate.nodeNameEquals(ele, NESTED_BEANS_ELEMENT)) {
+              doRegisterBeanDefinitions(ele);
+          }
+      }
+      ```
+    
+      进入`processBeanDefinition`方法
+    
+      ```java
+      protected void processBeanDefinition(Element ele, BeanDefinitionParserDelegate delegate) {
+          // 将Bean元素解析成BeanDefinition，但此时使用BeanDefinitionHolder对象进行了包装
+          BeanDefinitionHolder bdHolder = delegate.parseBeanDefinitionElement(ele);
+          if (bdHolder != null) {
+              // 如果有自定义标签，则处理自定义标签
+              bdHolder = delegate.decorateBeanDefinitionIfRequired(ele, bdHolder);
+              try {
+                  // 完成BeanDefinition的注册
+                  BeanDefinitionReaderUtils.registerBeanDefinition(
+                      bdHolder, getReaderContext().getRegistry());
+              } catch (BeanDefinitionStoreException ex) {
+                ....
+              }
+              // 发出响应事件，通知相关的监听器，这个bean已经加载完成
+              getReaderContext().fireComponentRegistered(new BeanComponentDefinition(bdHolder));
+          }
+      }
+      ```
+    
+      到这边BeanDefinition加载解析以及注册就结束了，其实继续跟踪可以发现所谓的注册，其实就是把在XML定义的Bean信息转为BeanDefinition对象之后存入Map中，BeanFactory是以Map的数据结构组织管理这些BeanDefinition的
+    
+      ```java
+      // Still in startup registration phase
+      this.beanDefinitionMap.put(beanName, beanDefinition);
+      this.beanDefinitionNames.add(beanName);
+      this.manualSingletonNames.remove(beanName);
+      ```
+    
+      可以在`DefaultListableBeanFactory`查看**beanDefinitionMap**的定义
+    
+      ```java
+      private final Map<String, BeanDefinition> beanDefinitionMap =
+          					new ConcurrentHashMap<String, BeanDefinition>(256);
+      ```
+    
+    - 时序图
+    
+    ```sequence
+    title: BeanDefinition加载解析及注册流程
+    participant AbstractApplicationContext as A
+    participant AbstractRefreshableApplicationContext as B
+    participant AbstractXmlApplicationContext as C
+    participant AbstractBeanDefinitionReader as D
+    participant BeanDefinitionReader as E
+    participant XmlBeanDefinitionReader as F
+    participant BeanDefinitionDocumentReader as H
+    
+    A->A:1、obtainFreshBeanFactory()
+    A->B:2、refreshBeanFactory()
+    B->B:3、createBeanFactory()
+    A->B:4、getBeanFactory()
+    A->B:5、loadBeanDefinitions()
+    B->C:6、loadBeanDefinitions()
+    C->C:7
+    
+    
+    ```
+    
+    
