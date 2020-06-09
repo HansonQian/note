@@ -308,25 +308,93 @@ B-->>A:5、DefaultListableBeanFactory
     
     - 时序图
     
-    ```sequence
-    title: BeanDefinition加载解析及注册流程
-    participant AbstractApplicationContext as A
-    participant AbstractRefreshableApplicationContext as B
-    participant AbstractXmlApplicationContext as C
-    participant AbstractBeanDefinitionReader as D
-    participant BeanDefinitionReader as E
-    participant XmlBeanDefinitionReader as F
-    participant BeanDefinitionDocumentReader as H
-    
-    A->A:1、obtainFreshBeanFactory()
-    A->B:2、refreshBeanFactory()
-    B->B:3、createBeanFactory()
-    A->B:4、getBeanFactory()
-    A->B:5、loadBeanDefinitions()
-    B->C:6、loadBeanDefinitions()
-    C->C:7
-    
-    
-    ```
-    
-    
+      ```sequence
+      title: BeanDefinition加载解析及注册流程
+      
+      participant AbstractBeanDefinitionReader as A
+      participant XmlBeanDefinitionReader as B
+      participant BeanDefinitionDocumentReader as C
+      participant BeanDefinitionParserDelegate as D
+      
+      A->B:1、loadBeanDefinitions
+      B->B:2、doLoadBeanDefinitions
+      B->B:3、registerBeanDefinitions
+      B->C:4、registerBeanDefinitions
+      C->C:5、doRegisterBeanDefinitions
+      C->C:6、parseBeanDefinitions
+      C->C:7、processBeanDefinitions
+      C->D:8、parseBeanDefinitionElement
+      D->D:9、parseBeanDefinitionElement
+      ```
+
+### Bean创建流程
+
+- `AbstractApplicationContext`#`refresh`->`finishBeanFactoryInitialization`
+
+  ```java
+  public void refresh() throws BeansException, IllegalStateException {
+      /*
+  	 * 初始化创建非懒加载方式的单例Bean示例（未设置属性）
+  	 * 填充属性
+  	 * 初始化方法调用（例如afterPropertiesSet方法，init-method方法）
+  	 * 调用BeanPostProcessor对实例Bean进行后置处理
+  	 */
+      finishBeanFactoryInitialization(beanFactory);
+  }
+  
+  protected void finishBeanFactoryInitialization(ConfigurableListableBeanFactory beanFactory) {
+      // Instantiate all remaining (non-lazy-init) singletons.
+      beanFactory.preInstantiateSingletons();
+  }
+  ```
+
+- BeanFactory准备创建Bean：`DefaultListableBeanFactory`#`preInstantiateSingletons`
+
+  ```java
+  @Override
+  public void preInstantiateSingletons() throws BeansException {
+      ....
+      List<String> beanNames = new ArrayList<String>(this.beanDefinitionNames);
+  
+      // Trigger initialization of all non-lazy singleton beans...
+      for (String beanName : beanNames) {
+          RootBeanDefinition bd = getMergedLocalBeanDefinition(beanName);
+          // 判断是否时FactoryBean
+          if (!bd.isAbstract() && bd.isSingleton() && !bd.isLazyInit()) {
+              if (isFactoryBean(beanName)) {
+                  // 第一次是创建FactoryBean本身，FactoryBean本身需要用 & + beanName 去获取
+                  final FactoryBean<?> factory = 
+                      (FactoryBean<?>) getBean(FACTORY_BEAN_PREFIX + beanName);
+                  boolean isEagerInit;
+                  if (System.getSecurityManager() != null && factory instanceof SmartFactoryBean) {
+                      isEagerInit = AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
+                          @Override
+                          public Boolean run() {
+                              return ((SmartFactoryBean<?>) factory).isEagerInit();
+                          }
+                      }, getAccessControlContext());
+                  }
+                  else {
+                       // 是否实现的FactoryBean为SmartFactoryBean 且 isEagerInit()是否为true(积极加载)
+                      isEagerInit = (factory instanceof SmartFactoryBean &&
+                                     ((SmartFactoryBean<?>) factory).isEagerInit());
+                  }
+                  // 第二次调用 getBean
+                  // isEagerInit为true则需要同步创建FactoryBean产生的Bean实例
+                  // 即 FactoryBean#getObject()
+                  if (isEagerInit) {
+                      // 3. 创建FactoryBean生产出来的Bean
+                      getBean(beanName);
+                  }
+              }
+              else {
+                  // 其他的单例类在这里实例化
+                  getBean(beanName);
+              }
+          }
+      }
+  	.....
+  }
+  ```
+
+- 
