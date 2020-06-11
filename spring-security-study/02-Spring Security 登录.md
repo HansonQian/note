@@ -37,7 +37,7 @@
 
 这两种方式的区别是前者将进入Spring Security定义的一系列用于安全控制的Filter，而后者不会。当指定一个`security:http`标签的`security`属性为`none`时，表示其对应的`pattern`的filter链为空。从Spring 3.1版本开始，Spring Security 允许我们定义多个 `security:http`标签以满足针对不同的 pattern 请求使用不同的 filter 链。当为`security:http`标签指定`pattern`属性时表示对应的`security:http`标签定义将对所有的请求发生作用。
 
-#### 1、自定义登录界面
+#### 1.1.1.1、自定义登录界面
 
 根据上述的说明，自定义登录界面如下
 
@@ -64,7 +64,7 @@
 
 ### 1.1.2、指定登录后界面
 
-#### 1、通过default-target-url指定
+#### 1.1.2.1、通过default-target-url指定
 
 默认情况下，我们在登录成功后会返回到原本受限制界面，但如果用户是直接请求登录页面，登录成功后应该跳转到哪里呢？默认情况下它会跳转到当前应用的根路径，即欢迎页面。通过指定`security:form-login`标签的`default-target-url`属性，我们可以让用户在直接登录后跳转到指定的页面。如果想让用户不管是直接请求登录页面，还是通过 Spring Security 引导过来的，登录之后都跳转到指定的页面，我们可以通过指定`security:form-login`标签的`always-use-default-target`属性为 `true`来达到这一效果。
 
@@ -77,7 +77,7 @@
 </security:http>
 ```
 
-#### 2、通过authentication-success-handler-ref指定
+#### 1.1.2.2、通过authentication-success-handler-ref指定
 
 `authentication-success-handler-ref` 对应一个 `AuthenticationSuccessHandler`实现类的引用。如果指定了 `authentication-success-handler-ref`，登录认证成功后会调用指定`AuthenticationSuccessHandler`的 `onAuthenticationSuccess` 方法。我们需要在该方法体内对认证成功做一个处理，然后返回对应的认证成功页面。使用了 `authentication-success-handler-ref` 之后认证成功后的处理就由指定的`AuthenticationSuccessHandler`来处理，之前的那些`default-target-url`之类的就都不起作用了。
 
@@ -87,8 +87,7 @@
 public class AuthenticationSuccessHandlerImpl implements AuthenticationSuccessHandler {
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
-                                        HttpServletResponse response,
-                                        Authentication authentication) throws IOException, ServletException {
+       HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
         response.sendRedirect(request.getContextPath());
     }
 }
@@ -111,7 +110,7 @@ public class AuthenticationSuccessHandlerImpl implements AuthenticationSuccessHa
 
 除了可以指定登录认证成功后的页面和对应的 AuthenticationSuccessHandler 之外，form-login 同样允许我们指定认证失败后的页面和对应认证失败后的处理器 AuthenticationFailureHandler。
 
-#### 1、通过 authentication-failure-url 指定
+#### 1.1.3.1、通过 authentication-failure-url 指定
 
 默认情况下登录失败后会返回登录页面，我们也可以通过`security:form-login`标签的`authentication-failure-url`属性来指定登录失败后的页面。需要注意的是登录失败后的页面跟登录页面一样也是需要配置成在未登录的情况下可以访问，否则登录失败后请求失败页面时又会被 Spring Security 重定向到登录页面。
 
@@ -125,7 +124,7 @@ public class AuthenticationSuccessHandlerImpl implements AuthenticationSuccessHa
 </security:http>
 ```
 
-#### 2、通过 authentication-failure-handler-ref 指定
+#### 1.1.3.2、通过 authentication-failure-handler-ref 指定
 
 类似于`authentication-success-handler-ref`，`authentication-failure-handler-ref `对应一个用于处理认证失败的`AuthenticationFailureHandler` 实现类。指定了该属性，Spring Security 在认证失败后会调用指定 `AuthenticationFailureHandler`的`onAuthenticationFailure`方法对认证失败进行处理，此时`authentication-failure-url`属性将不再发生作用。
 
@@ -135,8 +134,7 @@ public class AuthenticationSuccessHandlerImpl implements AuthenticationSuccessHa
 public class AuthenticationFailureHandlerImpl implements AuthenticationFailureHandler {
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, 
-                                        HttpServletResponse response, 
-                                        AuthenticationException e) throws IOException, ServletException {
+       HttpServletResponse response, AuthenticationException e) throws IOException, ServletException {
         response.sendRedirect(request.getContextPath());
     }
 }

@@ -90,7 +90,6 @@ admin=admin,ROLE_USER,ROLE_ADMIN
 ## 1.4、完整版配置如下
 
 ```xml
-<?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xmlns:security="http://www.springframework.org/schema/security"
