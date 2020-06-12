@@ -101,14 +101,157 @@ Spring security允许我们在配置文件中配置多个http元素，以针对�
 
 需要注意的是 http 拥有一个匹配 URL 的 pattern，未指定时表示匹配所有的请求，其下的子元素 intercept-url 也有一个匹配 URL 的 pattern，该 pattern 是在 http 元素对应 pattern 基础上的，也就是说一个请求必须先满足 http 对应的 pattern 才有可能满足其下 intercept-url 对应的 pattern。
 
-
-
 ## 1.5、Spring Security内置的核心Filter
+
+通过前面的介绍我们知道Spring Security是通过Filter来工作的，为保证Spring Security的顺利运行，其内部实现了一系列的Filter。这其中有几个是在使用Spring Security的Web应用中必定会用到的。接下来我们来简要的介绍一下FilterSecurityInterceptor、ExceptionTranslationFilter、SecurityContextPersistenceFilter和UsernamePasswordAuthenticationFilter。在我们使用http元素时前三者会自动添加到对应的FilterChain中，当我们使用了form-login元素时UsernamePasswordAuthenticationFilter也会自动添加到FilterChain中。所以我们在利用custom-filter往FilterChain中添加自己定义的这些Filter时需要注意它们的位置。
 
 ### 1.5.1、FilterSecurityInterceptor
 
+ FilterSecurityInterceptor是用于保护Http资源的，它需要一个AccessDecisionManager和一个AuthenticationManager的引用。它会从SecurityContextHolder获取Authentication，然后通过SecurityMetadataSource可以得知当前请求是否在请求受保护的资源。对于请求那些受保护的资源，如果Authentication.isAuthenticated()返回false或者FilterSecurityInterceptor的alwaysReauthenticate属性为true，那么将会使用其引用的AuthenticationManager再认证一次，认证之后再使用认证后的Authentication替换SecurityContextHolder中拥有的那个。然后就是利用AccessDecisionManager进行权限的检查。
+
+​    我们在使用基于NameSpace的配置时所配置的intercept-url就会跟FilterChain内部的FilterSecurityInterceptor绑定。如果要自己定义FilterSecurityInterceptor对应的bean，那么该bean定义大致如下所示：
+
+```xml
+<bean id="filterSecurityInterceptor"
+      class="org.springframework.security.web.access.intercept.FilterSecurityInterceptor">
+    <property name="authenticationManager" ref="authenticationManager" />
+    <property name="accessDecisionManager" ref="accessDecisionManager" />
+    <property name="securityMetadataSource">
+        <security:filter-security-metadata-source>
+            <security:intercept-url pattern="/admin/**" access="ROLE_ADMIN" />
+            <security:intercept-url pattern="/**" access="ROLE_USER,ROLE_ADMIN" />
+        </security:filter-security-metadata-source>
+    </property>
+</bean>
+```
+
+ filter-security-metadata-source用于配置其securityMetadataSource属性。intercept-url用于配置需要拦截的URL与对应的权限关系。
+
 ### 1.5.2、ExceptionTranslationFilter
+
+通过前面的介绍我们知道在Spring Security的Filter链表中ExceptionTranslationFilter就放在FilterSecurityInterceptor的前面。而ExceptionTranslationFilter是捕获来自FilterChain的异常，并对这些异常做处理。ExceptionTranslationFilter能够捕获来自FilterChain所有的异常，但是它只会处理两类异常，AuthenticationException和AccessDeniedException，其它的异常它会继续抛出。如果捕获到的是AuthenticationException，那么将会使用其对应的AuthenticationEntryPoint的commence()处理。如果捕获的异常是一个AccessDeniedException，那么将视当前访问的用户是否已经登录认证做不同的处理，如果未登录，则会使用关联的AuthenticationEntryPoint的commence()方法进行处理，否则将使用关联的AccessDeniedHandler的handle()方法进行处理。
+
+**AuthenticationEntryPoint**是在用户没有登录时用于引导用户进行登录认证的，在实际应用中应根据具体的认证机制选择对应的AuthenticationEntryPoint。
+
+**AccessDeniedHandler**用于在用户已经登录了，但是访问了其自身没有权限的资源时做出对应的处理。ExceptionTranslationFilter拥有的AccessDeniedHandler默认是AccessDeniedHandlerImpl，其会返回一个403错误码到客户端。我们可以通过显示的配置AccessDeniedHandlerImpl，同时给其指定一个errorPage使其可以返回对应的错误页面。当然我们也可以实现自己的AccessDeniedHandler。
+
+```xml
+<bean id="exceptionTranslationFilter"
+      class="org.springframework.security.web.access.ExceptionTranslationFilter">
+    <property name="authenticationEntryPoint">
+        <bean class="org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint">
+            <property name="loginFormUrl" value="/login.jsp" />
+        </bean>
+    </property>
+    <property name="accessDeniedHandler">
+        <bean class="org.springframework.security.web.access.AccessDeniedHandlerImpl">
+            <property name="errorPage" value="/access_denied.jsp" />
+        </bean>
+    </property>
+</bean>
+```
+
+在上述配置中我们指定了AccessDeniedHandler为AccessDeniedHandlerImpl，同时为其指定了errorPage，这样发生AccessDeniedException后将转到对应的errorPage上。指定了AuthenticationEntryPoint为使用表单登录的LoginUrlAuthenticationEntryPoint。此外，需要注意的是如果该filter是作为自定义filter加入到由NameSpace自动建立的FilterChain中时需把它放在内置的ExceptionTranslationFilter后面，否则异常都将被内置的ExceptionTranslationFilter所捕获。
+
+```xml
+<security:http>
+    <security:form-login login-page="/login.jsp"
+                         username-parameter="username" password-parameter="password"
+                         login-processing-url="/login.do" />
+    <!-- 退出登录时删除session对应的cookie -->
+    <security:logout delete-cookies="JSESSIONID"/>
+    <!-- 登录页面应当是不需要认证的 -->
+    <security:intercept-url pattern="/login*.jsp*"
+                            access="IS_AUTHENTICATED_ANONYMOUSLY" />
+    <security:intercept-url pattern="/**" access="ROLE_USER" />
+    <security:custom-filter ref="exceptionTranslationFilter" after="EXCEPTION_TRANSLATION_FILTER"/>
+</security:http>
+```
+
+在捕获到AuthenticationException之后，调用AuthenticationEntryPoint的commence()方法引导用户登录之前，ExceptionTranslationFilter还做了一件事，那就是使用RequestCache将当前HttpServletRequest的信息保存起来，以至于用户成功登录后需要跳转到之前的页面时可以获取到这些信息，然后继续之前的请求，比如用户可能在未登录的情况下发表评论，待用户提交评论的时候就会将包含评论信息的当前请求保存起来，同时引导用户进行登录认证，待用户成功登录后再利用原来的request包含的信息继续之前的请求，即继续提交评论，所以待用户登录成功后我们通常看到的是用户成功提交了评论之后的页面。Spring Security默认使用的RequestCache是HttpSessionRequestCache，其会将HttpServletRequest相关信息封装为一个SavedRequest保存在HttpSession中。
 
 ### 1.5.3、SecurityContextPersistenceFilter
 
+ SecurityContextPersistenceFilter会在请求开始时从配置好的SecurityContextRepository中获取SecurityContext，然后把它设置给SecurityContextHolder。在请求完成后将SecurityContextHolder持有的SecurityContext再保存到配置好的SecurityContextRepository，同时清除SecurityContextHolder所持有的SecurityContext。在使用NameSpace时，Spring Security默认会给SecurityContextPersistenceFilter的SecurityContextRepository设置一个HttpSessionSecurityContextRepository，其会将SecurityContext保存在HttpSession中。此外HttpSessionSecurityContextRepository有一个很重要的属性allowSessionCreation，默认为true。这样需要把SecurityContext保存在session中时，如果不存在session，可以自动创建一个。也可以把它设置为false，这样在请求结束后如果没有可用的session就不会保存SecurityContext到session了。SecurityContextRepository还有一个空实现，NullSecurityContextRepository，如果在请求完成后不想保存SecurityContext也可以使用它。
+
+这里再补充说明一点为什么SecurityContextPersistenceFilter在请求完成后需要清除SecurityContextHolder的SecurityContext。SecurityContextHolder在设置和保存SecurityContext都是使用的静态方法，具体操作是由其所持有的SecurityContextHolderStrategy完成的。默认使用的是基于线程变量的实现，即SecurityContext是存放在ThreadLocal里面的，这样各个独立的请求都将拥有自己的SecurityContext。在请求完成后清除SecurityContextHolder中的SucurityContext就是清除ThreadLocal，Servlet容器一般都有自己的线程池，这可以避免Servlet容器下一次分发线程时线程中还包含SecurityContext变量，从而引起不必要的错误。
+
+下面是一个SecurityContextPersistenceFilter的简单配置。
+
+```xml
+<bean id="securityContextPersistenceFilter"
+      class="org.springframework.security.web.context.SecurityContextPersistenceFilter">
+ <property name='securityContextRepository'>
+   <bean class='org.springframework.security.web.context.HttpSessionSecurityContextRepository'>
+      <property name='allowSessionCreation' value='false' />
+   </bean>
+ </property>
+</bean>
+```
+
 ### 1.5.4、UsernamePasswordAuthenticationFilter
+
+ UsernamePasswordAuthenticationFilter用于处理来自表单提交的认证。该表单必须提供对应的用户名和密码，对应的参数名默认为j_username和j_password。如果不想使用默认的参数名，可以通过UsernamePasswordAuthenticationFilter的usernameParameter和passwordParameter进行指定。表单的提交路径默认是“j_spring_security_check”，也可以通过UsernamePasswordAuthenticationFilter的filterProcessesUrl进行指定。通过属性postOnly可以指定只允许登录表单进行post请求，默认是true。其内部还有登录成功或失败后进行处理的AuthenticationSuccessHandler和AuthenticationFailureHandler，这些都可以根据需求做相关改变。此外，它还需要一个AuthenticationManager的引用进行认证，这个是没有默认配置的。
+
+```xml
+<bean id="authenticationFilter"
+  class="org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter">
+    <property name="authenticationManager" ref="authenticationManager" />
+    <property name="usernameParameter" value="username"/>
+    <property name="passwordParameter" value="password"/>
+    <property name="filterProcessesUrl" value="/login.do" />
+</bean>
+```
+
+如果要在http元素定义中使用上述AuthenticationFilter定义，那么完整的配置应该类似于如下这样子。
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:security="http://www.springframework.org/schema/security"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/security
+       http://www.springframework.org/schema/security/spring-security.xsd">
+   <!-- entry-point-ref指定登录入口 -->
+   <security:http entry-point-ref="authEntryPoint">
+      <security:logout delete-cookies="JSESSIONID" />
+      <security:intercept-url pattern="/login*.jsp*"
+         access="IS_AUTHENTICATED_ANONYMOUSLY" />
+      <security:intercept-url pattern="/**" access="ROLE_USER" />
+      <!-- 添加自己定义的AuthenticationFilter到FilterChain的FORM_LOGIN_FILTER位置 -->
+      <security:custom-filter ref="authenticationFilter" position="FORM_LOGIN_FILTER"/>
+   </security:http>
+    
+   <!-- AuthenticationEntryPoint，引导用户进行登录 -->
+   <bean id="authEntryPoint" class="org.springframework.security.web.authentication.
+                                    LoginUrlAuthenticationEntryPoint">
+      <property name="loginFormUrl" value="/login.jsp"/>
+   </bean>
+    
+   <!-- 认证过滤器 -->
+   <bean id="authenticationFilter" class="org.springframework.security.web.authentication.
+         UsernamePasswordAuthenticationFilter">
+      <property name="authenticationManager" ref="authenticationManager" />
+      <property name="usernameParameter" value="username"/>
+      <property name="passwordParameter" value="password"/>
+      <property name="filterProcessesUrl" value="/login.do" />
+   </bean>
+    
+   <security:authentication-manager alias="authenticationManager">
+      <security:authentication-provider
+         user-service-ref="userDetailsService">
+         <security:password-encoder hash="md5" base64="true">
+            <security:salt-source user-property="username" />
+         </security:password-encoder>
+      </security:authentication-provider>
+   </security:authentication-manager>
+    
+   <bean id="userDetailsService" class="org.springframework.security.core.userdetails
+             .jdbc.JdbcDaoImpl">
+      <property name="dataSource" ref="dataSource" />
+   </bean>
+</beans>
+```
+
