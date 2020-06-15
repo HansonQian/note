@@ -12,7 +12,7 @@ void decide(Authentication authentication, Object object,
 
 ## 1.1、Spring Security 的AOP Advice思想
 
- 对于使用AOP而言，我们可以使用几种不同类型的advice：before、after、throws和around。其中around advice是非常实用的，通过它我们可以控制是否要执行方法、是否要修改方法的返回值，以及是否要抛出异常。Spring Security在对方法调用和Web请求时也是使用的around advice的思想。在方法调用时，可以使用标准的Spring AOP来达到around advice的效果，而在进行Web请求时是通过标准的Filter来达到around advice的效果。
+ 对于使用AOP而言，我们可以使用几种不同类型的通知：before、after、throws和around以及afterReturn。其中around advice是非常实用的，通过它我们可以控制是否要执行方法、是否要修改方法的返回值，以及是否要抛出异常。Spring Security在对方法调用和Web请求时也是使用的around advice的思想。在方法调用时，可以使用标准的Spring AOP来达到around advice的效果，而在进行Web请求时是通过标准的Filter来达到around advice的效果。
 
 ​    对于大部分人而言都比较喜欢对Service层的方法调用进行权限控制，因为我们的主要业务逻辑都是在Service层进行实现的。如果你只是想保护Service层的方法，那么使用Spring AOP就可以了。如果你需要直接保护领域对象，那么你可以考虑使用Aspectj。
 
@@ -20,7 +20,7 @@ void decide(Authentication authentication, Object object,
 
 ## 1.2、AbstractSecurityInterceptor
 
-AbstractSecurityInterceptor是一个实现了对受保护对象的访问进行拦截的抽象类，其中有几个比较重要的方法。beforeInvocation()方法实现了对访问受保护对象的权限校验，内部用到了AccessDecisionManager和AuthenticationManager；finallyInvocation()方法用于实现受保护对象请求完毕后的一些清理工作，主要是如果在beforeInvocation()中改变了SecurityContext，则在finallyInvocation()中需要将其恢复为原来的SecurityContext，该方法的调用应当包含在子类请求受保护资源时的finally语句块中；afterInvocation()方法实现了对返回结果的处理，在注入了AfterInvocationManager的情况下默认会调用其decide()方法。AbstractSecurityInterceptor只是提供了这几种方法，并且包含了默认实现，具体怎么调用将由子类负责。每一种受保护对象都拥有继承自AbstractSecurityInterceptor的拦截器类， MethodSecurityInterceptor将用于调用受保护的方法，而FilterSecurityInterceptor将用于受保护的Web请求。它们在处理受保护对象的请求时都具有一致的逻辑，具体的逻辑如下：
+`AbstractSecurityInterceptor`是一个实现了对受保护对象的访问进行拦截的抽象类，其中有几个比较重要的方法。**beforeInvocation()**方法实现了对访问受保护对象的权限校验，内部用到了AccessDecisionManager和AuthenticationManager；**finallyInvocation()**方法用于实现受保护对象请求完毕后的一些清理工作，主要是如果在beforeInvocation()中改变了SecurityContext，则在finallyInvocation()中需要将其恢复为原来的SecurityContext，该方法的调用应当包含在子类请求受保护资源时的finally语句块中；**afterInvocation()**方法实现了对返回结果的处理，在注入了AfterInvocationManager的情况下默认会调用其**decide()**方法。AbstractSecurityInterceptor只是提供了这几种方法，并且包含了默认实现，具体怎么调用将由子类负责。每一种受保护对象都拥有继承自AbstractSecurityInterceptor的拦截器类， MethodSecurityInterceptor将用于调用受保护的方法，而FilterSecurityInterceptor将用于受保护的Web请求。它们在处理受保护对象的请求时都具有一致的逻辑，具体的逻辑如下：
 
 1. 先将正在请求调用的受保护对象传递给beforeInvocation()方法进行权限鉴定
 2. 权限鉴定失败就直接抛出异常了
@@ -46,7 +46,7 @@ public Object invoke(MethodInvocation mi) throws Throwable {
 
 ### 1.2.1、ConfigAttribute
 
-AbstractSecurityInterceptor 的 beforeInvocation()方法内部在进行鉴权的时候使用的是注入的 AccessDecisionManager 的 decide() 方法进行的。如前所述，decide()方法是需要接收一个受保护对象对应的 ConfigAttribute 集合的。一个 ConfigAttribute 可能只是一个简单的角色名称，具体将视 AccessDecisionManager 的实现者而定。AbstractSecurityInterceptor 将使用一个 SecurityMetadataSource 对象来获取与受保护对象关联的 ConfigAttribute 集合，具体 SecurityMetadataSource 将由子类实现提供。ConfigAttribute 将通过注解的形式定义在受保护的方法上，或者通过 access 属性定义在受保护的 URL 上。例如我们常见的 就表示将 ConfigAttribute ROLE_USER 和 ROLE_ADMIN 应用在所有的 URL 请求上。对于默认的 AccessDecisionManager 的实现，上述配置意味着用户所拥有的权限中只要拥有一个 GrantedAuthority 与这两个 ConfigAttribute 中的一个进行匹配则允许进行访问。当然，严格的来说 ConfigAttribute 只是一个简单的配置属性而已，具体的解释将由 AccessDecisionManager 来决定。
+AbstractSecurityInterceptor 的 beforeInvocation()方法内部在进行鉴权的时候使用的是注入的 AccessDecisionManager 的 decide() 方法进行的。如前所述，decide()方法是需要接收一个受保护对象对应的 ConfigAttribute 集合的。一个 ConfigAttribute 可能只是一个简单的角色名称，具体将视 AccessDecisionManager 的实现者而定。AbstractSecurityInterceptor 将使用一个 SecurityMetadataSource 对象来获取与受保护对象关联的 ConfigAttribute 集合，具体 SecurityMetadataSource 将由子类实现提供。ConfigAttribute 将通过注解的形式定义在受保护的方法上，或者通过 access 属性定义在受保护的 URL 上。例如我们常见的 就表示将 ConfigAttribute `ROLE_USER` 和 `ROLE_ADMIN` 应用在所有的 URL 请求上。对于默认的 AccessDecisionManager 的实现，上述配置意味着用户所拥有的权限中只要拥有一个 GrantedAuthority 与这两个 ConfigAttribute 中的一个进行匹配则允许进行访问。当然，严格的来说 ConfigAttribute 只是一个简单的配置属性而已，具体的解释将由 AccessDecisionManager 来决定。
 
 ### 1.2.2、RunAsManager
 
@@ -68,7 +68,7 @@ public Authentication buildRunAs(Authentication authentication, Object object,
     }
     // Add existing authorities
     newAuthorities.addAll(authentication.getAuthorities());
-    returnnew RunAsUserToken(this.key, authentication.getPrincipal(), 
+    return new RunAsUserToken(this.key, authentication.getPrincipal(), 
                              authentication.getCredentials(),
                              newAuthorities, authentication.getClass());
 }

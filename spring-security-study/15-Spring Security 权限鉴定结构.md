@@ -1,0 +1,20 @@
+# 1、Spring Security 权限鉴定结构
+
+## 1.1、权限
+
+所有的Authentication实现类都保存了一个GrantedAuthority列表，其表示用户所具有的权限。GrantedAuthority是通过AuthenticationManager设置到Authentication对象中的，然后AccessDecisionManager将从Authentication中获取用户所具有的GrantedAuthority来鉴定用户是否具有访问对应资源的权限。
+
+GrantedAuthority是一个接口，其中只定义了一个getAuthority()方法，其返回值为String类型。该方法允许AccessDecisionManager获取一个能够精确代表该权限的字符串。通过返回一个字符串，一个GrantedAuthority能够很轻易的被大部分AccessDecisionManager读取。如果一个GrantedAuthority不能够精确的使用一个String来表示，那么其对应的getAuthority()方法调用应当返回一个null，这表示AccessDecisionManager必须对该GrantedAuthority的实现有特定的支持，从而可以获取该GrantedAuthority所代表的权限信息。
+
+Spring Security内置了一个GrantedAuthority的实现，SimpleGrantedAuthority。它直接接收一个表示权限信息的字符串，然后getAuthority()方法直接返回该字符串。Spring Security内置的所有AuthenticationProvider都是使用它来封装Authentication对象的。
+
+## 1.2、调用前处理
+
+### 1.2.1、AccessDecisionManager
+
+### 1.2.2、基于投票的AccessDecisionManager实现
+
+## 1.3、调用后处理
+
+## 1.4、角色继承
+
