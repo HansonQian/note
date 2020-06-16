@@ -10,7 +10,37 @@ Spring Security内置了一个GrantedAuthority的实现，SimpleGrantedAuthority
 
 ## 1.2、调用前处理
 
+ Spring Security是通过拦截器来控制受保护对象的访问的，如方法调用和Web请求。在正式访问受保护对象之前，Spring Security将使用AccessDecisionManager来鉴定当前用户是否有访问对应受保护对象的权限。
+
 ### 1.2.1、AccessDecisionManager
+
+AccessDecisionManager是由AbstractSecurityInterceptor调用的，它负责鉴定用户是否有访问对应资源（方法或URL）的权限。AccessDecisionManager是一个接口，其中只定义了三个方法，其定义如下：
+
+```java
+public interface AccessDecisionManager {
+    /**
+     * 通过传递的参数来决定用户是否有访问对应受保护对象的权限
+     * @param authentication 当前正在请求受包含对象的Authentication
+     * @param object 受保护对象，其可以是一个MethodInvocation、JoinPoint或FilterInvocation。
+     * @param configAttributes 与正在请求的受保护对象相关联的配置属性
+     */
+    void decide(Authentication authentication, Object object, 
+                Collection<ConfigAttribute> configAttributes)
+        throws AccessDeniedException, InsufficientAuthenticationException;
+    /**
+     * 表示当前AccessDecisionManager是否支持对应的ConfigAttribute
+     */
+    boolean supports(ConfigAttribute attribute);
+    /**
+     * 表示当前AccessDecisionManager是否支持对应的受保护对象类型
+     */
+    boolean supports(Class<?> clazz);
+}
+```
+
+- decide()方法用于决定authentication是否符合受保护对象要求的configAttributes
+- supports(ConfigAttribute attribute)方法是用来判断AccessDecisionManager是否能够处理对应的ConfigAttribute的
+- supports(Class<?> clazz)方法用于判断配置的AccessDecisionManager是否支持对应的受保护对象类型
 
 ### 1.2.2、基于投票的AccessDecisionManager实现
 
