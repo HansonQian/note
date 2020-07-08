@@ -4,7 +4,7 @@
 
 ### 1.1、Spring MVC架构
 
-![image-20200312160016197](04%E3%80%81Spring%20Boot%E4%B8%8EWeb%E5%BC%80%E5%8F%91/image-20200312160016197.png)
+![image-20200312160016197](04-Spring%20Boot%E4%B8%8EWeb%E5%BC%80%E5%8F%91/image-20200312160016197.png)
 
 ### 1.2、Spring MVC架构流程图
 
@@ -23,11 +23,11 @@
 
 ## 2、Web开发示例
 
-​		Spring Boot对Web开发的支持很全面，包括开发、测试和部署阶段都做了支持。`spring-boot-starter-web`是对Web开发提供支持的组件，主要包括RESTful，参数校验，使用Tomcat作为内嵌容器等等。
+Spring Boot对Web开发的支持很全面，包括开发、测试和部署阶段都做了支持。`spring-boot-starter-web`是对Web开发提供支持的组件，主要包括RESTful，参数校验，使用Tomcat作为内嵌容器等等。
 
 ### 2.1、JSON的支持
 
-​		JSON 是一种轻量级数据交互格式，易于阅读和编写，同时也易于机器解析和生成。
+JSON 是一种轻量级数据交互格式，易于阅读和编写，同时也易于机器解析和生成。
 
 ### 2.2、创建一个Web项目
 
