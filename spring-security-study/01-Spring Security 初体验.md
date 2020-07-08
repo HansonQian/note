@@ -106,7 +106,8 @@ admin=admin,ROLE_USER,ROLE_ADMIN
     <security:authentication-manager>
         <security:authentication-provider>
             <security:user-service>
-                <security:user name="admin" password="admin" authorities="ROLE_USER, ROLE_ADMIN"/>
+                <security:user name="admin" password="admin" 
+                               authorities="ROLE_USER, ROLE_ADMIN"/>
                 <security:user name="user"  password="user"  authorities="ROLE_USER"/>
             </security:user-service>
         </security:authentication-provider>
@@ -150,7 +151,7 @@ Spring的配置文件是通过对应的ContextLoaderListener来加载和初始�
 
 ![初体验](01-Spring%20Security%20%E5%88%9D%E4%BD%93%E9%AA%8C/image-20200603163857682.png)
 
-因为我们的`applicationContext-security.xml`文件中配置好了所有的请求都需要`ROLE_USER`权限，所以当我们在请求主页的时候，Spring Security发现我们还没有登录，Spring会引导我们到登录界面。使用正确的用户名和密码（如上面配置的user/user或admin/admin）登录后，如果符合对应的权限我们就可以访问主页了，否则将出现403（禁止访问）界面。
+因为我们的 `applicationContext-security.xml` 文件中配置好了所有的请求都需要 `ROLE_USER` 权限，所以当我们在请求主页的时候，Spring Security 发现我们还没有登录，Spring 会引导我们到登录界面。使用正确的用户名和密码（如上面配置的 user/user 或 admin/admin ）登录后，如果符合对应的权限我们就可以访问主页了，否则将出现403（禁止访问）界面。
 
 可能你会奇怪，我们没有建立上面的登录页面，为什么Spring Security会跳到上面的登录页面呢？这是我们设置http的`auto-config=”true”`时Spring Security自动为我们生成的。
 

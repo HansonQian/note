@@ -6,16 +6,16 @@ Spring Security 的底层是通过一系列的 Filter 来管理的，每个 Filt
 
 Spring Security已经定义了一些Filter，不管实际应用中你用到了哪些，它们应当保持如下顺序：
 
-1. ChannelProcessingFilter，如果你访问的channel错了，那首先就会在channel之间进行跳转，如http变为https
-2. SecurityContextPersistenceFilter，这样的话在一开始进行request的时候就可以在SecurityContextHolder中建立一个SecurityContext，然后在请求结束的时候，任何对SecurityContext的改变都可以被copy到HttpSession
-3. ConcurrentSessionFilter，因为它需要使用SecurityContextHolder的功能，而且更新对应session的最后更新时间，以及通过SessionRegistry获取当前的SessionInformation以检查当前的session是否已经过期，过期则会调用LogoutHandler
+1. `ChannelProcessingFilter`，如果你访问的channel错了，那首先就会在channel之间进行跳转，如http变为https
+2. `SecurityContextPersistenceFilter`，这样的话在一开始进行request的时候就可以在SecurityContextHolder中建立一个SecurityContext，然后在请求结束的时候，任何对SecurityContext的改变都可以被copy到HttpSession
+3. `ConcurrentSessionFilter`，因为它需要使用SecurityContextHolder的功能，而且更新对应session的最后更新时间，以及通过SessionRegistry获取当前的SessionInformation以检查当前的session是否已经过期，过期则会调用LogoutHandler
 4. 认证处理机制，如UsernamePasswordAuthenticationFilter，CasAuthenticationFilter，BasicAuthenticationFilter等，以至于SecurityContextHolder可以被更新为包含一个有效的Authentication请求
-5. SecurityContextHolderAwareRequestFilter，它将会把HttpServletRequest封装成一个继承自HttpServletRequestWrapper的SecurityContextHolderAwareRequestWrapper，同时使用SecurityContext实现了HttpServletRequest中与安全相关的方法
-6. JaasApiIntegrationFilter，如果SecurityContextHolder中拥有的Authentication是一个JaasAuthenticationToken，那么该Filter将使用包含在JaasAuthenticationToken中的Subject继续执行FilterChain
-7. RememberMeAuthenticationFilter，如果之前的认证处理机制没有更新SecurityContextHolder，并且用户请求包含了一个Remember-Me对应的cookie，那么一个对应的Authentication将会设给SecurityContextHolder
-8. AnonymousAuthenticationFilter，如果之前的认证机制都没有更新SecurityContextHolder拥有的Authentication，那么一个AnonymousAuthenticationToken将会设给SecurityContextHolder
-9. ExceptionTransactionFilter，用于处理在FilterChain范围内抛出的AccessDeniedException和AuthenticationException，并把它们转换为对应的Http错误码返回或者对应的页面
-10. FilterSecurityInterceptor，保护Web URI，并且在访问被拒绝时抛出异常
+5. `SecurityContextHolderAwareRequestFilter`，它将会把HttpServletRequest封装成一个继承自HttpServletRequestWrapper的SecurityContextHolderAwareRequestWrapper，同时使用SecurityContext实现了HttpServletRequest中与安全相关的方法
+6. `JaasApiIntegrationFilter`，如果SecurityContextHolder中拥有的Authentication是一个JaasAuthenticationToken，那么该Filter将使用包含在JaasAuthenticationToken中的Subject继续执行FilterChain
+7. `RememberMeAuthenticationFilter`，如果之前的认证处理机制没有更新SecurityContextHolder，并且用户请求包含了一个Remember-Me对应的cookie，那么一个对应的Authentication将会设给SecurityContextHolder
+8. `AnonymousAuthenticationFilter`，如果之前的认证机制都没有更新SecurityContextHolder拥有的Authentication，那么一个AnonymousAuthenticationToken将会设给SecurityContextHolder
+9. `ExceptionTransactionFilter`，用于处理在FilterChain范围内抛出的AccessDeniedException和AuthenticationException，并把它们转换为对应的Http错误码返回或者对应的页面
+10. `FilterSecurityInterceptor`，保护Web URI，并且在访问被拒绝时抛出异常
 
 ## 1.2、添加Filter到FilterChain
 
@@ -75,7 +75,7 @@ DelegatingFilterProxy 是 Spring 中定义的一个 Filter 实现类，其作用
 </filter-mapping>
 ```
 
-在上述配置中，DelegatingFilterProxy代理的就是名为SpringSecurityFilterChain的Filter。
+在上述配置中，DelegatingFilterProxy代理的就是名为`SpringSecurityFilterChain`的Filter。
 
 需要注意的是被代理的Filter的初始化方法init()和销毁方法destroy()默认是不会被执行的。通过设置DelegatingFilterProxy的targetFilterLifecycle属性为true，可以使被代理Filter与DelegatingFilterProxy具有同样的生命周期
 
@@ -107,7 +107,7 @@ Spring security允许我们在配置文件中配置多个http元素，以针对�
 
 ### 1.5.1、FilterSecurityInterceptor
 
- FilterSecurityInterceptor是用于保护Http资源的，它需要一个AccessDecisionManager和一个AuthenticationManager的引用。它会从SecurityContextHolder获取Authentication，然后通过SecurityMetadataSource可以得知当前请求是否在请求受保护的资源。对于请求那些受保护的资源，如果Authentication.isAuthenticated()返回false或者FilterSecurityInterceptor的alwaysReauthenticate属性为true，那么将会使用其引用的AuthenticationManager再认证一次，认证之后再使用认证后的Authentication替换SecurityContextHolder中拥有的那个。然后就是利用AccessDecisionManager进行权限的检查。
+ `FilterSecurityInterceptor` 是用于保护Http资源的，它需要一个 `AccessDecisionManager` 和一个`AuthenticationManager` 的引用。它会从SecurityContextHolder获取Authentication，然后通过SecurityMetadataSource可以得知当前请求是否在请求受保护的资源。对于请求那些受保护的资源，如果Authentication.isAuthenticated()返回false或者FilterSecurityInterceptor的alwaysReauthenticate属性为true，那么将会使用其引用的AuthenticationManager再认证一次，认证之后再使用认证后的Authentication替换SecurityContextHolder中拥有的那个。然后就是利用AccessDecisionManager进行权限的检查。
 
 ​    我们在使用基于NameSpace的配置时所配置的intercept-url就会跟FilterChain内部的FilterSecurityInterceptor绑定。如果要自己定义FilterSecurityInterceptor对应的bean，那么该bean定义大致如下所示：
 
@@ -129,7 +129,7 @@ Spring security允许我们在配置文件中配置多个http元素，以针对�
 
 ### 1.5.2、ExceptionTranslationFilter
 
-通过前面的介绍我们知道在Spring Security的Filter链表中ExceptionTranslationFilter就放在FilterSecurityInterceptor的前面。而ExceptionTranslationFilter是捕获来自FilterChain的异常，并对这些异常做处理。ExceptionTranslationFilter能够捕获来自FilterChain所有的异常，但是它只会处理两类异常，AuthenticationException和AccessDeniedException，其它的异常它会继续抛出。如果捕获到的是AuthenticationException，那么将会使用其对应的AuthenticationEntryPoint的commence()处理。如果捕获的异常是一个AccessDeniedException，那么将视当前访问的用户是否已经登录认证做不同的处理，如果未登录，则会使用关联的AuthenticationEntryPoint的commence()方法进行处理，否则将使用关联的AccessDeniedHandler的handle()方法进行处理。
+通过前面的介绍我们知道在Spring Security的Filter链表中 `ExceptionTranslationFilter` 就放在FilterSecurityInterceptor的前面。而ExceptionTranslationFilter是捕获来自FilterChain的异常，并对这些异常做处理。ExceptionTranslationFilter能够捕获来自FilterChain所有的异常，但是它只会处理两类异常，AuthenticationException和AccessDeniedException，其它的异常它会继续抛出。如果捕获到的是AuthenticationException，那么将会使用其对应的AuthenticationEntryPoint的commence()处理。如果捕获的异常是一个AccessDeniedException，那么将视当前访问的用户是否已经登录认证做不同的处理，如果未登录，则会使用关联的AuthenticationEntryPoint的commence()方法进行处理，否则将使用关联的AccessDeniedHandler的handle()方法进行处理。
 
 **AuthenticationEntryPoint**是在用户没有登录时用于引导用户进行登录认证的，在实际应用中应根据具体的认证机制选择对应的AuthenticationEntryPoint。
 
@@ -191,7 +191,7 @@ Spring security允许我们在配置文件中配置多个http元素，以针对�
 
 ### 1.5.4、UsernamePasswordAuthenticationFilter
 
- UsernamePasswordAuthenticationFilter用于处理来自表单提交的认证。该表单必须提供对应的用户名和密码，对应的参数名默认为j_username和j_password。如果不想使用默认的参数名，可以通过UsernamePasswordAuthenticationFilter的usernameParameter和passwordParameter进行指定。表单的提交路径默认是“j_spring_security_check”，也可以通过UsernamePasswordAuthenticationFilter的filterProcessesUrl进行指定。通过属性postOnly可以指定只允许登录表单进行post请求，默认是true。其内部还有登录成功或失败后进行处理的AuthenticationSuccessHandler和AuthenticationFailureHandler，这些都可以根据需求做相关改变。此外，它还需要一个AuthenticationManager的引用进行认证，这个是没有默认配置的。
+ UsernamePasswordAuthenticationFilter用于处理来自表单提交的认证。该表单必须提供对应的用户名和密码，对应的参数名默认为 `j_username` 和 `j_password`。如果不想使用默认的参数名，可以通过UsernamePasswordAuthenticationFilter的usernameParameter和passwordParameter进行指定。表单的提交路径默认是`“j_spring_security_check”`，也可以通过UsernamePasswordAuthenticationFilter的filterProcessesUrl进行指定。通过属性postOnly可以指定只允许登录表单进行post请求，默认是true。其内部还有登录成功或失败后进行处理的AuthenticationSuccessHandler和AuthenticationFailureHandler，这些都可以根据需求做相关改变。此外，它还需要一个AuthenticationManager的引用进行认证，这个是没有默认配置的。
 
 ```xml
 <bean id="authenticationFilter"

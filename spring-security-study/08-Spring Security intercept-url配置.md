@@ -16,7 +16,7 @@
 <security:intercept-url pattern="/secure/**" access="ROLE_USER,ROLE_ADMIN"/>
 ```
 
-在上述配置中就表示secure路径下的所有URL请求都应当具有`ROLE_USER`或`ROLE_ADMIN`权限。当access的值是以`ROLE_`开头的则将会交由RoleVoter进行处理。
+在上述配置中就表示secure路径下的所有URL请求都应当具有`ROLE_USER`或`ROLE_ADMIN`权限。当access的值是以`ROLE_`开头的则将会交由 `RoleVoter` 进行处理。
 
 此外，其还可以是一个表达式，上述配置如果使用表达式来表示的话则应该是如下这个样子。
 
@@ -34,9 +34,9 @@
    <security:intercept-url pattern="/secure/**" access="hasRole('ROLE_USER') or hasRole('ROLE_ADMIN')"/>
 ```
 
-需要注意的是使用表达式时需要指定 http 元素的 use-expressions=”true”。当 intercept-url 的 access 属性使用表达式时默认将使用 WebExpressionVoter 进行处理。
+需要注意的是使用表达式时需要指定 http 元素的 `use-expressions=”true”`。当 intercept-url 的 access 属性使用表达式时默认将使用 `WebExpressionVoter` 进行处理。
 
-此外，还可以指定三个比较特殊的属性值，默认情况下将使用 AuthenticatedVoter 来处理它们。
+此外，还可以指定三个比较特殊的属性值，默认情况下将使用 `AuthenticatedVoter` 来处理它们。
 
 - `IS_AUTHENTICATED_ANONYMOUSLY `表示用户不需要登录就可以访问；通常登录地址需要设置为该值。
 - `IS_AUTHENTICATED_REMEMBERED` 表示用户需要是通过 Remember-Me 功能进行自动登录的才能访问；

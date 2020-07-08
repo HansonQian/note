@@ -2,14 +2,14 @@
 
 ## 1.1、form-login标签介绍
 
-`security:http`标签下的`security:form-login`子标签是用来定义表单登录信息的。当什么属性都不指定的时候Spring Security会生成一个默认的登录页面。如果不想使用默认的登录页面，可以指定自定义的登录界面。
+`security:http` 标签下的 `security:form-login` 子标签是用来定义表单登录信息的。当什么属性都不指定的时候 Spring Security 会生成一个默认的登录页面。如果不想使用默认的登录页面，可以指定自定义的登录界面。
 
 ### 1.1.1、使用自定义登录界面
 
 自定义登录界面是通过``security:form-login``标签的`login-page`属性来指定的，此外还有其他几个属性
 
 - `username-parameter`：表示登录时用户名使用的是哪个参数，默认是 `j_username`
-- `password-paramete`：表示登录时密码使用的是哪个参数，默认是`j_password`
+- `password-parameter`：表示登录时密码使用的是哪个参数，默认是`j_password`
 - `login-processing-url`：表示登录时提交的地址，默认是`/j-spring-security-check`这个只是 Spring Security 用来标记登录页面使用的提交地址，真正关于登录这个请求是不需要用户自己处理的
 
 所以，我们可以通过如下的配置使Spring Security在需要用户登录时跳转到我们自定义的登录页面

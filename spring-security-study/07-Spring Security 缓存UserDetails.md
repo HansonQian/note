@@ -1,6 +1,6 @@
 # 1、Spring Security 缓存UserDetails
 
-Spring Security提供了一个实现了可以缓存UserDetails的UserDetailsService实现类，CachingUserDetailsService。该类的构造接收一个用于真正加载UserDetails的UserDetailsService实现类。当需要加载UserDetails时，其首先会从缓存中获取，如果缓存中没有对应的UserDetails存在，则使用持有的UserDetailsService实现类进行加载，然后将加载后的结果存放在缓存中。UserDetails与缓存的交互是通过UserCache接口来实现的。CachingUserDetailsService默认拥有UserCache的一个空实现引用，NullUserCache。以下是CachingUserDetailsService的类定义。
+Spring Security提供了一个实现了可以缓存UserDetails的UserDetailsService实现类，CachingUserDetailsService。该类的构造接收一个用于真正加载UserDetails的UserDetailsService实现类。当需要加载UserDetails时，其首先会从缓存中获取，如果缓存中没有对应的UserDetails存在，则使用持有的UserDetailsService实现类进行加载，然后将加载后的结果存放在缓存中。UserDetails与缓存的交互是通过UserCache接口来实现的。CachingUserDetailsService默认拥有UserCache的一个空实现引用 `NullUserCache`。以下是CachingUserDetailsService的类定义。
 
 ```java
 public class CachingUserDetailsService implements UserDetailsService {
@@ -62,7 +62,7 @@ public class EhCacheBasedUserCache implements UserCache, InitializingBean {
     <!-- 使用可以缓存 UserDetails 的 CachingUserDetailsService -->
     <security:authentication-provider user-service-ref="cachingUserDetailsService" />
 </security:authentication-manager>
-<!-- 可以缓存 UserDetails 的 UserDetailsService -->
+	<!-- 可以缓存 UserDetails 的 UserDetailsService -->
 <bean id="cachingUserDetailsService" class="org.springframework.security.config.authentication.CachingUserDetailsService">
     <!-- 真正加载 UserDetails 的 UserDetailsService -->
     <constructor-arg ref="userDetailsService"/>

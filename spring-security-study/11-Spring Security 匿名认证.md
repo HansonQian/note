@@ -7,7 +7,7 @@
 使用 NameSpace 时，http 元素的使用默认就会启用对匿名认证的支持，不过我们也可以通过设置 http 元素下的 anonymous 元素的 enabled 属性为 false 停用对匿名认证的支持。以下是 anonymous 元素可以配置的属性，以及它们的默认值。
 
 ```xml
- <security:anonymous enabled="true" key="doesNotMatter" 
+<security:anonymous enabled="true" key="doesNotMatter" 
                      username="anonymousUser" granted-authority="ROLE_ANONYMOUS"/>
 ```
 
