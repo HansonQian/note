@@ -157,3 +157,184 @@ public class JdbcAccountDao implements IAccountDao {
 
 ## 1.6、案例程序改造
 
+### 1.6.1、实现基于XML的IOC容器
+
+```java
+@Slf4j
+public class BeanFactory {
+    private static final Map<String, Object> beanMap = new HashMap<String, Object>();
+    
+    public static void init(InputStream inputStream) {
+        SAXReader saxReader = new SAXReader();
+        try {
+            Document document = saxReader.read(inputStream);
+            Element rootElement = document.getRootElement();
+            List<Element> childElements = rootElement.elements();
+            for (Element element : childElements) {
+                String idValue = element.attributeValue("id");
+                String classValue = element.attributeValue("class");
+                Object obj = Class.forName(classValue).newInstance();
+                beanMap.put(idValue, obj);
+                List<Element> elementList = element.elements();
+                for (Element sonEle : elementList) {
+                    String nameValue = sonEle.attributeValue("name");
+                    String refValue = sonEle.attributeValue("ref");
+                    Object refObj = beanMap.get(refValue);
+                    String methodName = "set"
+                            + nameValue.substring(0, 1).toUpperCase()
+                            + nameValue.substring(1);
+                    Class<?> objClass = obj.getClass();
+                    Class<?> refObjClass = refObj.getClass();
+                    Class<?>[] interfaces = refObjClass.getInterfaces();
+                    Method method;
+                    if (interfaces.length == 0) {
+                        method = objClass
+                                .getMethod(methodName, refObjClass);
+                    }else{
+                        method = objClass
+                                .getMethod(methodName, interfaces[0]);
+                    }
+                    method.invoke(obj, refObj);
+                }
+            }
+        } catch (Exception e) {
+            log.error("初始化容器失败{}", e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    public static Object getBean(String id) {
+        return beanMap.get(id);
+    }
+}
+```
+
+### 1.6.2、实现基于JDK动态代理的AOP
+
+```java
+public class ProxyFactory {
+    private TransactionManager transactionManager;
+    public void setTransactionManager(TransactionManager transactionManager) {
+        this.transactionManager = transactionManager;
+    }
+    public Object getProxy(final Object target) {
+        return Proxy.newProxyInstance(
+                this.getClass().getClassLoader(), target.getClass().getInterfaces(),
+                (Object proxy, Method method, Object[] args) -> {
+                    Object result;
+                    try {
+                        transactionManager.beginTransaction();
+                        result = method.invoke(target, args);
+                        transactionManager.commitTransaction();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        transactionManager.rollbackTransaction();
+                        // 向上抛出异常，方便web层捕获
+                        throw e.getCause();
+                    }
+                    return result;
+                }
+        );
+    }
+}
+```
+
+### 1.6.3、事务管理器
+
+```java
+public class TransactionManager {
+    private ConnectionUtil connectionUtil;
+    public void setConnectionUtil(ConnectionUtil connectionUtil) {
+        this.connectionUtil = connectionUtil;
+    }
+    // 开启事务
+    public void beginTransaction() throws SQLException {
+        connectionUtil.getCurrentThreadConn().setAutoCommit(false);
+    }
+    // 提交事务
+    public void commitTransaction() throws SQLException {
+        connectionUtil.getCurrentThreadConn().commit();
+    }
+    // 回滚事务
+    public void rollbackTransaction() throws SQLException {
+        connectionUtil.getCurrentThreadConn().rollback();
+    }
+}
+```
+
+### 1.6.4、数据库链接对象工具
+
+```java
+public class ConnectionUtil {
+    private ThreadLocal<Connection> threadLocal = new ThreadLocal<>();
+    /**
+     * 从当前线程获取数据库连接对象
+     * @return 连接对象
+     */
+    public Connection getCurrentThreadConn() {
+        // 判断当前线程是否绑定了链接
+        Connection connection = threadLocal.get();
+        if (null == connection) {
+            // 从连接池拿到链接绑定到线程
+            connection = DBPoolUtil.getConnection();
+            threadLocal.set(connection);
+        }
+        return connection;
+    }
+}
+```
+
+### 1.6.5、上下文监听器
+
+```java
+@Slf4j
+@WebListener("ContextLoaderListener")
+public class ContextLoaderListener implements ServletContextListener {
+    @Override
+    public void contextInitialized(ServletContextEvent sce) {
+        log.info("Web容器启动...");
+        initIoc();
+    }
+    @Override
+    public void contextDestroyed(ServletContextEvent sce) {
+        log.info("Web容器销毁...");
+    }
+    public void initIoc() {
+        log.info("上下文初始化");
+        InputStream resourceAsStream = Thread.currentThread().getContextClassLoader()
+                .getResourceAsStream("beans.xml");
+        // 初始化IOC
+        BeanFactory.init(resourceAsStream);
+        log.info("IOC 容器初始化完成");
+    }
+}
+```
+
+### 1.6.6、配置文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans>
+    <bean id="connectionUtil" class="com.github.transfer.utils.ConnectionUtil"/>
+
+    <bean id="accountDao" class="com.github.transfer.dao.impl.JdbcAccountDao">
+        <property name="connectionUtil" ref="connectionUtil"/>
+    </bean>
+
+    <bean id="transferService" class="com.github.transfer.service.impl.TransferService">
+        <property name="accountDao" ref="accountDao"/>
+    </bean>
+
+    <bean id="transactionManager" class="com.github.transfer.core.
+                                         transaction.TransactionManager">
+        <property name="connectionUtil" ref="connectionUtil"/>
+    </bean>
+
+    <bean id="proxyFactory" class="com.github.transfer.core.factory.ProxyFactory">
+        <property name="transactionManager" ref="transactionManager"/>
+    </bean>
+</beans>
+```
+
+### 1.6.7、完整版代码
+
+参考：[web-day27](git@github.com:HansonQian/java-web-parent.git)
