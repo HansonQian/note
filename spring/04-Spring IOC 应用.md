@@ -58,37 +58,35 @@
       </listener>
   </web-app>
   ```
-```
-  
-- 从配置类启动容器
+  - 从配置类启动容器
   
   ```xml
   <?xml version="1.0" encoding="UTF-8"?>
-  <web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
-           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-           xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee
-                        http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd"
-           version="3.1">
-      <!--告知监听器使用注解方式启动IOC容器-->
-      <context-param>
-          <param-name>contextClass</param-name>
-          <param-value>
-             org.springframework.web.context.support.AnnotationConfigWebApplicationContext
-          </param-value>
-      </context-param>
-  	<!--配置启动类全限定名称-->
-      <context-param>
-          <param-name>contextConfigLocation</param-name>
-          <param-value>com.github.config.SpringConfig</param-value>
-      </context-param>
-      <!-- 使用监听器启动IOC容器-->
-      <listener>
-   		<listener-class>
-              org.springframework.web.context.ContextLoaderListener
-          </listener-class>
-      </listener>
-  </web-app>
-```
+    <web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee
+                          http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd"
+             version="3.1">
+        <!--告知监听器使用注解方式启动IOC容器-->
+        <context-param>
+            <param-name>contextClass</param-name>
+            <param-value>
+               org.springframework.web.context.support.AnnotationConfigWebApplicationContext
+            </param-value>
+        </context-param>
+    	<!--配置启动类全限定名称-->
+        <context-param>
+            <param-name>contextConfigLocation</param-name>
+            <param-value>com.github.config.SpringConfig</param-value>
+        </context-param>
+        <!-- 使用监听器启动IOC容器-->
+        <listener>
+     		<listener-class>
+                org.springframework.web.context.ContextLoaderListener
+            </listener-class>
+        </listener>
+    </web-app>
+  ```
 
 ### 1.1.2、纯XML方式使用IOC容器
 
@@ -471,8 +469,6 @@ public class UserService{
 ## 1.2、Spring IOC 高级特性
 
 ### 1.2.1、lazy-init 延迟加载
-
-
 
 ### 1.2.2、FactoryBean 和 BeanFactory
 
