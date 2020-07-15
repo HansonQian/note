@@ -211,7 +211,7 @@ public class BeanFactory {
 ### 1.6.2、实现基于JDK动态代理的AOP
 
 ```java
-public class ProxyFactory {
+public class JDKProxyBeanFactory {
     private TransactionManager transactionManager;
     public void setTransactionManager(TransactionManager transactionManager) {
         this.transactionManager = transactionManager;
@@ -237,6 +237,8 @@ public class ProxyFactory {
     }
 }
 ```
+
+> 基于CGLIB实现的代理参考 `CGLibProxyBeanFactory`
 
 ### 1.6.3、事务管理器
 
