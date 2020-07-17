@@ -470,11 +470,202 @@ public class UserService{
 
 ### 1.2.1、lazy-init 延迟加载
 
+`ApplicationConetext` 容器的默认行为是在启动服务器时将所有 `singleton` `bean` 提前进行实例化。提前实例化意味着作为初始化过程的一部分，`ApplicationContext` 实例会创建并配置所有 `singleton` `bean`。
+
+例如：
+
+```xml
+<bean id="person" class="com.github.bean.Person"/>
+<!-- 该 Bean 默认的设置为 -->
+<bean id="person" class="com.github.bean.Person" lazy-init="false"/>
+```
+
+设置 `lazy-init` 为 `true` 的 bean 将不会在 `ApplicationContext` 启动时提前被实例化，而是第一次向容器通过 `getBean` 索取 bean 时才进行实例化的。
+
+如果一个设置了立即加载的 Person bean，引用了一个延迟加载的 Address bean，那么 person 在容器启动时候被实例化，而 address 由于被 person 引用，所以也被实例化，这种情况也符合延迟加载的 bean 在第一次被调用时才被实例化的规则。
+
+也在在容器层次中通过在元素上使用 `default-lazy-init` 属性来控制延迟初始化。如下面配置：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+	http://www.springframework.org/schema/beans/spring-beans.xsd"
+    default-lazy-init="true">
+</beans>
+```
+
+如果一个 bean 的 `scope` 属性为 `scope=‘prototype` 时，即便设置了 `lazy-init='false'` ，容器启动时也不会实例化 bean，而是调用 `getBean` 方法实例化的。
+
+- 应用场景
+  - 开启延迟加载一定程度上能够提高容器的启动和运行的性能
+  - 对于不常使用的 bean 设置延迟加载，这样偶尔使用的时候再加载，不必要从一开始该 bean 就占用资源
+
 ### 1.2.2、FactoryBean 和 BeanFactory
+
+`BeanFactory` 接口是容器的顶级接口，定义了容器的一些基础行为，负责生产和管理 Bean 的一个工厂，具体使用它下面的子接口类型，例如 `ApplicationContext`。
+
+在 Spring 中 Bean 有两种，一种是普通 Bean，一种是 `FactoryBean` （工厂Bean），`FactoryBean` 可以生成某一个类型的 Bean实例（返回给我们），也就是我们可以借助它自定义 Bean 的创建过程。
+
+在 Spring 中 [ Bean创建的三种方式](#1.1.2.2、实例化Bean的三种方式 ) 中的 **静态工厂方法**和**实例化工厂方法**，他们与`FactoryBean` 作用类似，`FactoryBean` 使用较多，尤其在 Spring 框架一些组件中会使用，还有其他框架和 Spring 框架整合时使用。
+
+`FactoryBean` 源码：
+
+```java
+public interface FactoryBean<T> {
+	// 返回 FactoryBean 创建的 Bean实例，如果 isSingleton() 返回的是true,
+    // 则该对象将会存放在Spring容器的单例对象缓存池中
+	T getObject() throws Exception;
+	// 返回 FactoryBean 创建的 Bean 类型
+	Class<?> getObjectType();
+	// 返回作用域是否是单例
+	boolean isSingleton();
+}
+```
+
+#### 1.2.2.1、FactoryBean 使用
+
+- Student 类
+
+```java
+public class Student{
+    private String name;
+    private String grade;
+    // 省略 get/set/toString 方法
+}
+```
+
+- StudentFactoryBean类
+
+```java
+public class StudentFactoryBean implements FactoryBean<Student>{
+   private String studentInfo;
+   public Student getObject() throws Exception{
+       Student stu =  new Student();
+       String[]  info = studentInfo.split(",");
+       stu.setName(info[0]);
+       stu.setGrade(info[1]);
+       return stu;
+    }  
+   public Class<Student> getObjectType(){
+       return Student.class;
+   }
+   public boolean isSingleton(){
+       return true;
+   }
+   // 省略 studentInfo 的 set/get 方法
+}
+```
+
+- xml 配置
+
+```xml
+<bean id="student" class="com.github.factory.bean.StudentFactoryBean">
+	<property name="studentInfo" value=" 张三,三年二班"/>
+</bean>
+```
+
+- 测试程序
+
+```java
+// 获取student
+Object obj =  applicationContext.getBean("student");
+System.out.println("stu:"+obj)
+// 获取student工厂,要获取工厂本身需要在id前面加上“&”符号
+Object objFactory =  applicationContext.getBean("&student");
+System.out.println("objFactory:"+objFactory)
+```
+
+- 测试结果
+
+```shell
+stu: Student{name="张三",grade="三年二班"}
+objFactory:com.github.factory.bean.StudentFactoryBean@26f3fd01
+```
 
 ### 1.2.3、后置处理器
 
+Spring 框架提供了两种后置处理 Bean 分别是 `BeanPostProcessor` 和 `BeanFactoryPostProcessor`，两者在使用上是有所区别的。
+
 #### 1.2.3.1、BeanPostProcessor
+
+bean 级别的处理，针对某个具体的bean进行处理
+
+```java
+public interface BeanPostProcessor {
+	Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException;
+	Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException;
+}
+```
+
+`BeanPostProcessor` 接口提供了两个方法，分别是初始化前和初始化后执行方法。具体这个初始化方法指的是在定义 Bean 时 ，通过 `init-method` 属性指定的方法 ，例如：
+
+```xml
+<bean id="person" class="com.github.bean.Person" init-method="init"/>
+```
+
+`BeanPostProcessor` 接口的这两个方法分别在初始化方法前后执行（示例中的init方法被之前前与执行后执行），需要注意的是**当我们定义一个实现了BeanPostProcessor接口的类，默认是会对整个Spring容器中所有的bean进行处理**。
+
+既然是默认全部处理，那么我们怎么确认我们需要处理的某个具体的bean呢？
+
+可以看到方法中有两个参数。类型分别为Object和String，第一个参数是每个 bean 的实例，第二个参数是每个bean 的 name 或者 id 属性的值。所以我们可以第二个参数，来确认我们将要处理的具体的bean。
+
+> 注意：处理是发生在Spring容器的实例化和依赖注入之后。
 
 #### 1.2.3.2、BeanFactoryPostProcessor
 
+BeanFactory 级别的处理，是针对整个Bean的工厂进行处理，典型应用 `PropertyPlaceholderConfigurer`
+
+```java
+public interface BeanFactoryPostProcessor {
+	void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException;
+}
+```
+
+`BeanFactoryPostProcessor`接口只提供了一个方法,方法参数为 `ConfigurableListableBeanFactory`，其接口定义如下
+
+```java
+public interface ConfigurableListableBeanFactory
+		extends ListableBeanFactory, AutowireCapableBeanFactory, ConfigurableBeanFactory {
+    
+	void ignoreDependencyType(Class<?> type);
+
+	void ignoreDependencyInterface(Class<?> ifc);
+
+	void registerResolvableDependency(Class<?> dependencyType, Object autowiredValue);
+
+	boolean isAutowireCandidate(String beanName, DependencyDescriptor descriptor)
+			throws NoSuchBeanDefinitionException;
+
+	BeanDefinition getBeanDefinition(String beanName) throws NoSuchBeanDefinitionException;
+
+	Iterator<String> getBeanNamesIterator();
+
+	void clearMetadataCache();
+
+	void freezeConfiguration();
+
+	boolean isConfigurationFrozen();
+
+	void preInstantiateSingletons() throws BeansException;
+}
+```
+
+其中有个方法名为 `getBeanDefinition` 的方法，我们可以根据此方法，找到我们定义bean的 `BeanDefinition` 对象。然后我们可以对定义的属性进行修改，以下是`BeanDefinition`中的方法
+
+![BeanDefinition定义](04-Spring%20IOC%20%E5%BA%94%E7%94%A8/image-20200717172925002.png)
+
+该接口的定义的属性和方法名字类似我们 bean 标签的属性，setBeanClassName 对应bean标签中的class属性，所以当我们拿到BeanDefinition对象时，我们可以手动修改bean标签中所定义的属性值。
+
+`BeanDefinition` 即我们在xml中定义了bean标签时，Spring会把这些bean标签解析成一个javabean，这个BeanDefinition 就是 bean 标签对应的javabean。它是Spring 内部处理 bean 的数据结构。
+
+Spring容器初始化 bean大致过程   定义bean标签 > 将bean标签解析成BeanDefinition > 调用构造方法实例化(IOC) > 属性值得依赖注入(DI)
+
+所以BeanFactoryPostProcess方法的执行是发生在第二步之后，第三步之前。
+
+> 注意：当我们调用BeanFactoryPostProcess方法时，这时候bean还没有实例化，此时bean刚被解析成BeanDefinition对象。
+
+#### 1.2.3.3、总结
+
+以上两种都为Spring提供的后处理bean的接口，只是两者执行的时机不一样。前者为实例化之后，后者是实例化之前。功能上，后者对bean的处理功能更加强大
