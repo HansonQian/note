@@ -37,7 +37,7 @@ token = encodeBase64(header)+"."+encodeBase64(payload)+"."+encodeBase64(signatur
 
   ```json
   {
-      "sub","1234567890",
+      "sub":"1234567890",
       "name":"hanson.q",
       "admin":true
   }
